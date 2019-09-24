@@ -5,6 +5,9 @@ import 'package:image_picker/image_picker.dart';
 import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/services.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:screen/screen.dart';
+
 
 void main() {
   runApp(Myapp());
@@ -28,10 +31,30 @@ class _MyappState extends State<Myapp> {
   FileType _pickingType;
   TextEditingController _controller = new TextEditingController();
 
+  final imgUrl = "https://unsplash.com/photos/iEJVyyevw-U/download?force=true";
+  bool downloading = false;
+  var progressString = "";
+
   @override
   void initState() {
     super.initState();
     _controller.addListener(() => _extension = _controller.text);
+
+    setscreen();
+  }
+
+  Future setscreen() async {
+    // Get the current brightness:
+    double brightness = await Screen.brightness;
+
+// Set the brightness:
+    Screen.setBrightness(0.7);
+
+// Check if the screen is kept on:
+    bool isKeptOn = await Screen.isKeptOn;
+
+// Prevent screen from going into sleep mode:
+    Screen.keepOn(true);
   }
 
   Future getImage() async {
@@ -53,8 +76,8 @@ class _MyappState extends State<Myapp> {
     print(file);
     Dio dio = Dio();
     FormData formData = FormData.fromMap({
-      "name": "wendux",
-      "age": 25,
+      "name": "Paramitter String",
+      //"age": 25,
       "file": await MultipartFile.fromFile(file, filename: filename),
 //      "files": [
 //        await MultipartFile.fromFile("./text1.txt", filename: "text1.txt"),
@@ -63,13 +86,43 @@ class _MyappState extends State<Myapp> {
     });
     print(file);
 
-    var response =
-        await dio.post("http://10.2.13.13:3000/upload", data: formData);
+    var response = await dio
+        .post("https://dotnetcore-webapi.herokuapp.com/Upload", data: formData);
     print(response);
     setState(() {
       Status = response.toString();
     });
   }
+
+  Future<void> downloadFile() async {
+    print("Call Dowload");
+    Dio dio = Dio();
+
+    try {
+      var dir = await getApplicationDocumentsDirectory();
+
+      await dio.download(imgUrl, "${dir.path}/myimage.jpg",
+         // onReceiveProgress: (rec, total) {
+//            print("Rec: $rec , Total: $total");
+//
+//            setState(() {
+//              downloading = true;
+//              progressString = ((rec / total) * 100).toStringAsFixed(0) + "%";
+//            });
+          //}
+          );
+    } catch (e) {
+      print(e);
+      print("error");
+    }
+
+    setState(() {
+      downloading = false;
+      progressString = "Completed";
+    });
+    print("Download completed");
+  }
+
 
   void _openFileExplorer() async {
     if (_pickingType != FileType.CUSTOM || _hasValidMime) {
@@ -170,8 +223,14 @@ class _MyappState extends State<Myapp> {
                 },
                 child: const Text('Upload ', style: TextStyle(fontSize: 20)),
               ),
-              Text("Upload Status : $Status")
-
+              Text("Upload Status : $Status"),
+              RaisedButton(
+                onPressed: () {
+                  downloadFile();
+                },
+                child: const Text('Downloading a file ',
+                    style: TextStyle(fontSize: 20)),
+              ),
             ],
           )),
     );
